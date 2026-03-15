@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const UserSchema = new Schema(
     {
@@ -21,6 +21,23 @@ const UserSchema = new Schema(
             type: String,
             required: true,
             select: false
+        },
+        branch: {
+            type: String,
+            trim: true
+        },
+        exam_target: {
+            type: String,
+            trim: true
+        },
+        subjects: {
+            type: [String],
+            default: []
+        },
+        bio: {
+            type: String,
+            trim: true,
+            maxLength: 500
         },
         refreshToken: {
             type: String

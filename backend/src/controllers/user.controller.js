@@ -22,10 +22,11 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
 
 export const registerUser = asyncHandler( async (req, res) => {
-    const { name , email , password } = req.body;
+    console.log("Registration request body:", req.body);
+    const { name, email, password, branch, exam_target, subjects } = req.body;
 
     if(!name || !email || !password) {
-        throw new ApiError(400, "All fields are required")
+        throw new ApiError(400, "Name, email, and password are required")
     }
 
     const existingUser = await User.findOne({ email })
@@ -37,12 +38,35 @@ export const registerUser = asyncHandler( async (req, res) => {
     const user = await User.create({
         name,
         email,
-        password
+        password,
+        branch,
+        exam_target,
+        subjects: subjects || []
     })
+
+    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken")
 
-    res.status(201).json(new ApiResponse(201, "User registered successfully", createdUser))
+    if (!createdUser) {
+        throw new ApiError(500, "Something went wrong while registering user")
+    }
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production'
+    }
+
+    res.status(201)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(201, {
+                user: createdUser,
+                accessToken,
+                refreshToken
+            }, "User registered successfully")
+        )
 })
 
 
@@ -79,11 +103,11 @@ export const loginUser = asyncHandler(async (req, res) => {
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
         .json(
-            new ApiResponse(true, "User logged in successfully", {
+            new ApiResponse(200, {
                 user: loggedInUser,
                 accessToken,
                 refreshToken
-            })
+            }, "User logged in successfully")
         )
 })
 
@@ -111,3 +135,29 @@ export const logoutUser = asyncHandler(async (req, res) => {
         .clearCookie("refreshToken", options)
         .json(new ApiResponse(200, null, "Logged out successfully"));
 })
+
+export const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { name, bio, branch, exam_target, subjects } = req.body;
+
+    if (!name) {
+        throw new ApiError(400, "Name is required");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                name,
+                bio,
+                branch,
+                exam_target,
+                subjects: Array.isArray(subjects) ? subjects : subjects?.split(',').map(s => s.trim()).filter(Boolean)
+            }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res.status(200).json(
+        new ApiResponse(200, user, "Account details updated successfully")
+    );
+});
