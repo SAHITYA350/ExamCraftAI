@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line
 } from 'recharts';
 
 const CHART_COLORS = {
@@ -116,6 +117,31 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                 iconSize={8}
               />
             </PieChart>
+          </ResponsiveContainer>
+        );
+      
+      case 'line':
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            <LineChart data={data} margin={{ top: 5, right: 30, bottom: 5, left: -10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="date" tick={{ fill: '#808080', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#808080', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              {(dataKeys || ['value']).map((key, i) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={chartColors[i % chartColors.length]}
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: chartColors[i % chartColors.length], strokeWidth: 2, stroke: '#121212' }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  name={key.charAt(0).toUpperCase() + key.slice(1)}
+                />
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         );
 

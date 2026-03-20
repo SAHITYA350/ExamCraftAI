@@ -82,8 +82,27 @@ export const calculateAndStoreAnalytics = async (userId) => {
     // Readiness Index: Combined metric of accuracy and participation
     const readinessIndex = Math.min(100, Math.round(overallAccuracy * 0.7 + Math.min(totalAttempts * 2, 30)));
 
-    const strongTopics = topicBreakdown.filter(t => t.accuracy >= 80).map(t => t.name);
-    const weakTopics = topicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
+    // RECENT-BIASED ANALYTICS for Weak Topics and Recommendations
+    // We take either the last 20 submissions or all if less than 20
+    const recentSubmissions = submissions.slice(-20);
+    const recentTopicStats = {};
+    recentSubmissions.forEach(sub => {
+        const topic = sub.question?.topic || 'Uncategorized';
+        if (!recentTopicStats[topic]) recentTopicStats[topic] = { total: 0, correct: 0 };
+        recentTopicStats[topic].total += 1;
+        if (sub.isCorrect) recentTopicStats[topic].correct += 1;
+    });
+
+    const recentTopicBreakdown = Object.keys(recentTopicStats).map(name => ({
+        name,
+        accuracy: Math.round((recentTopicStats[name].correct / recentTopicStats[name].total) * 100)
+    }));
+
+    const strongTopics = recentTopicBreakdown.filter(t => t.accuracy >= 75).map(t => t.name);
+    const weakTopics = recentTopicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
+
+    // If no recent weak topics, fall back to global ones
+    const finalWeakTopics = weakTopics.length > 0 ? weakTopics : topicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
 
     const analyticsData = {
         overallAccuracy,
@@ -93,9 +112,9 @@ export const calculateAndStoreAnalytics = async (userId) => {
         practiceHistory,
         readinessIndex,
         strongTopics,
-        weakTopics,
+        weakTopics: finalWeakTopics,
         streak: Object.keys(historyMap).length,
-        recentActivity: submissions.slice(-5).reverse().map(s => ({
+        recentActivity: submissions.slice(-6).reverse().map(s => ({
             title: s.question?.topic || 'Practice Session',
             date: s.createdAt,
             score: s.score,
@@ -111,7 +130,7 @@ export const calculateAndStoreAnalytics = async (userId) => {
                 overallScore: overallAccuracy,
                 totalQuestionsAttempted: totalAttempts,
                 correctAnswers: correctAnswers,
-                weakTopics: weakTopics,
+                weakTopics: finalWeakTopics,
                 strongTopics: strongTopics,
                 readinessIndex: readinessIndex,
                 topicBreakdown: topicBreakdown,
