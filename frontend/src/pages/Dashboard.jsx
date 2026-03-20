@@ -117,8 +117,11 @@ const Dashboard = () => {
   );
 
   const weakTopics = analytics?.weakTopics || [];
-  const recentActivity = [];
-  const topicPerformance = analytics?.topicBreakdown || [];
+  const recentActivity = analytics?.recentActivity || [];
+  const topicPerformance = (analytics?.topicBreakdown || []).map(t => ({
+    name: t.name,
+    value: t.accuracy
+  }));
 
   // Generate dynamic AI feedback based on overall accuracy
   const getAiFeedback = () => {
@@ -148,7 +151,7 @@ const Dashboard = () => {
   const aiFeedback = getAiFeedback();
 
   const recommendations = analytics?.weakTopics?.length > 0 
-    ? analytics.weakTopics.map(t => ({ text: `Improve your skills in ${t}`, priority: 'high', icon: Brain }))
+    ? analytics.weakTopics.slice(0, 3).map(t => ({ text: `Focus on improving your skills in ${t}`, priority: 'high', icon: Brain }))
     : [
         { text: 'Complete practice sessions to get AI recommendations', priority: 'medium', icon: Brain },
       ];
@@ -379,8 +382,13 @@ const Dashboard = () => {
               recentActivity.map((act, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] border border-transparent hover:border-white/5 transition-all group cursor-pointer">
                   <div className="flex items-center gap-3">
-                    {/* ... icon would go here ... */}
-                    <span className="text-sm text-silk">{act.title}</span>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${act.isCorrect ? 'bg-success/10' : 'bg-danger/10'}`}>
+                      <History size={14} className={act.isCorrect ? 'text-success' : 'text-danger'} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm text-silk truncate w-32 sm:w-40">{act.title}</p>
+                      <p className="text-[10px] text-dark-700">{new Date(act.date).toLocaleDateString()}</p>
+                    </div>
                   </div>
                   <ChevronRight size={16} className="text-silver-200 group-hover:text-gold group-hover:translate-x-1 transition-all" />
                 </div>

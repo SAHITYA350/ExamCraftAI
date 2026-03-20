@@ -69,11 +69,15 @@ export const calculateAndStoreAnalytics = async (userId) => {
             : 0;
     });
 
-    const practiceHistory = Object.keys(historyMap).sort().map(date => ({
-        date,
-        questions: historyMap[date],
-        accuracy: 0
-    })).slice(-7);
+    const practiceHistory = Object.keys(historyMap).sort().map(date => {
+        const daySubmissions = submissions.filter(s => s.createdAt.toISOString().split('T')[0] === date);
+        const dayCorrect = daySubmissions.filter(s => s.isCorrect).length;
+        return {
+            date,
+            attempts: daySubmissions.length,
+            accuracy: Math.round((dayCorrect / daySubmissions.length) * 100)
+        };
+    }).slice(-7);
 
     // Readiness Index: Combined metric of accuracy and participation
     const readinessIndex = Math.min(100, Math.round(overallAccuracy * 0.7 + Math.min(totalAttempts * 2, 30)));
@@ -90,7 +94,13 @@ export const calculateAndStoreAnalytics = async (userId) => {
         readinessIndex,
         strongTopics,
         weakTopics,
-        streak: Object.keys(historyMap).length
+        streak: Object.keys(historyMap).length,
+        recentActivity: submissions.slice(-5).reverse().map(s => ({
+            title: s.question?.topic || 'Practice Session',
+            date: s.createdAt,
+            score: s.score,
+            isCorrect: s.isCorrect
+        }))
     };
 
     // PERSIST TO MONGODB
@@ -161,8 +171,26 @@ export const getWeakTopics = asyncHandler(async (req, res) => {
 });
 
 export const getRecommendations = asyncHandler(async (req, res) => {
-    // Recommend topics with lowest accuracy
+    const submissions = await Submission.find({ user: req.user._id }).populate('question');
+    const topicStats = {};
+    submissions.forEach(sub => {
+        const topic = sub.question?.topic || 'Uncategorized';
+        if (!topicStats[topic]) topicStats[topic] = { total: 0, correct: 0 };
+        topicStats[topic].total += 1;
+        if (sub.isCorrect) topicStats[topic].correct += 1;
+    });
+
+    const recommendations = Object.keys(topicStats)
+        .filter(name => (topicStats[name].correct / topicStats[name].total) < 0.7)
+        .sort((a, b) => (topicStats[a].correct / topicStats[a].total) - (topicStats[b].correct / topicStats[b].total))
+        .slice(0, 3)
+        .map(name => `Focus on improving your skills in ${name}`);
+
+    if (recommendations.length === 0) {
+        recommendations.push("Keep up the great work! Try tackling higher difficulty questions.");
+    }
+
     return res.status(200).json(
-        new ApiResponse(200, ["Mock Topic 1", "Mock Topic 2"], "Recommendations fetched successfully")
+        new ApiResponse(200, recommendations, "Recommendations fetched successfully")
     );
 });
