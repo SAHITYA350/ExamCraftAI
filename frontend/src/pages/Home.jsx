@@ -17,7 +17,7 @@ const Home = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 2000); // 2 second loader
+    }, 600); // Reduced from 2000ms to 600ms for snappier feel
     
     if (isAuthenticated) fetchHomeData();
     
@@ -241,7 +241,7 @@ const Home = () => {
                     <h3 className="text-lg sm:text-xl font-bold text-silk font-[var(--font-display)]">No sessions yet</h3>
                   </div>
                 </div>
-                <Link to="/upload-material" className="btn-gold w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm">
+                <Link to={isAuthenticated ? "/upload-material" : "/register"} className="btn-gold w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm">
                    Get Started <ArrowRight size={16} />
                 </Link>
               </div>

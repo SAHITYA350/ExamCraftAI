@@ -18,23 +18,28 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const verifySession = async () => {
       const savedUser = authService.getCurrentUser();
+      
       if (savedUser) {
-        // Optimistically set from storage
+        // Optimistically set from storage and stop loading immediately
+        // to prevent ProtectedRoute from redirecting on reload.
         setUser(savedUser);
+        setLoading(false);
         
         try {
-          // Verify with backend
+          // Verify with backend in the background
           const responseBody = await authService.getMe();
           if (responseBody && responseBody.data) {
             setUser(responseBody.data);
           }
         } catch (error) {
           console.error("Session verification failed", error);
-          // 401 interceptor will handle redirect, but we clear state here too
           setUser(null);
+          // If we already set loading(false), we don't need to do it again,
+          // but if verification fails, the user will be redirected then.
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     verifySession();
