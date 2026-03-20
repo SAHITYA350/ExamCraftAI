@@ -228,10 +228,10 @@ const Analytics = () => {
           <ChartPanel
             title="Daily Practice"
             subtitle="Questions solved per day"
-            type="bar"
+            type="line"
             data={practiceHistory}
-            dataKeys={['questions']}
-            colors={[CHART_COLORS.gold]}
+            dataKeys={['attempts', 'accuracy']}
+            colors={[CHART_COLORS.gold, CHART_COLORS.success]}
             height={280}
           />
         </div>

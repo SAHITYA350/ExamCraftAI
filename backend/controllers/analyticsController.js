@@ -56,11 +56,16 @@ export const calculateAndStoreAnalytics = async (userId) => {
 
     const overallAccuracy = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 0;
     
-    const topicBreakdown = Object.keys(topicStats).map(name => ({
-        name,
-        accuracy: topicStats[name].total > 0 ? Math.round((topicStats[name].correct / topicStats[name].total) * 100) : 0,
-        count: topicStats[name].total
-    }));
+    const topicBreakdown = Object.keys(topicStats).map(name => {
+        const topicSubmissions = submissions.filter(s => (s.question?.topic || 'Uncategorized') === name);
+        const lastActivity = topicSubmissions.length > 0 ? topicSubmissions[topicSubmissions.length - 1].createdAt : new Date(0);
+        return {
+            name,
+            accuracy: topicStats[name].total > 0 ? Math.round((topicStats[name].correct / topicStats[name].total) * 100) : 0,
+            count: topicStats[name].total,
+            lastActivity
+        };
+    }).sort((a, b) => b.lastActivity - a.lastActivity);
 
     const difficultyBreakdown = {};
     Object.keys(difficultyStats).forEach(key => {
@@ -101,8 +106,24 @@ export const calculateAndStoreAnalytics = async (userId) => {
     const strongTopics = recentTopicBreakdown.filter(t => t.accuracy >= 75).map(t => t.name);
     const weakTopics = recentTopicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
 
+    // Identify the very latest topic
+    const latestTopic = submissions[submissions.length - 1]?.question?.topic || 'Uncategorized';
+    
+    // Ensure latest topic is prominent if it's weak
+    let finalWeakTopics = weakTopics;
+    if (recentTopicStats[latestTopic] && (recentTopicStats[latestTopic].correct / recentTopicStats[latestTopic].total) < 0.6) {
+        if (!finalWeakTopics.includes(latestTopic)) {
+            finalWeakTopics = [latestTopic, ...finalWeakTopics];
+        } else {
+            // Move to front
+            finalWeakTopics = [latestTopic, ...finalWeakTopics.filter(t => t !== latestTopic)];
+        }
+    }
+
     // If no recent weak topics, fall back to global ones
-    const finalWeakTopics = weakTopics.length > 0 ? weakTopics : topicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
+    if (finalWeakTopics.length === 0) {
+        finalWeakTopics = topicBreakdown.filter(t => t.accuracy < 60).map(t => t.name);
+    }
 
     const analyticsData = {
         overallAccuracy,
