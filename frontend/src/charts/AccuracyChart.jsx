@@ -7,8 +7,8 @@ const AccuracyChart = ({ data }) => {
   return (
     <ChartPanel
       title="Accuracy Trend"
-      subtitle="Your performance over time"
-      type="line"
+      subtitle="Session-by-session performance track"
+      type="track"
       data={chartData}
       dataKeys={['accuracy']}
       colors={[CHART_COLORS.gold]}

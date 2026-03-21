@@ -76,6 +76,17 @@ const Dashboard = () => {
     }
   };
 
+  const rawHistory = analytics?.practiceHistory || [];
+  const practiceHistory = (rawHistory.length === 1 
+    ? [{ date: 'Initial', attempts: 0, correct: 0, incorrect: 0, accuracy: 0 }, ...rawHistory]
+    : rawHistory).map((d, i) => ({ 
+        ...d, 
+        name: d.date === 'Initial' ? 'Begin' : `S${i}`,
+        _sin: Math.sin(i * 1.0) * 8 + 35,
+        _cos: Math.cos(i * 0.7) * 10 + 55,
+        _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
+      }));
+
   // Dashboard data using real analytics
   const stats = [
     {
@@ -326,7 +337,7 @@ const Dashboard = () => {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <AccuracyChart data={analytics?.practiceHistory || []} />
+        <AccuracyChart data={practiceHistory} />
         <RiskChart riskScore={analytics?.readinessIndex || 0} />
       </div>
 

@@ -57,11 +57,12 @@ export const submitAnswer = asyncHandler(async (req, res) => {
         const update = {
             $push: { submissions: submission._id },
             $inc: { currentScore: evaluation.score },
+            $addToSet: { viewedSolutions: questionId },
             lastAccessedAt: Date.now()
         };
 
         if (evaluation.isCorrect) {
-            update.$addToSet = { solvedQuestions: questionId };
+            update.$addToSet.solvedQuestions = questionId;
         }
 
         await Session.findByIdAndUpdate(sessionId, update);
@@ -158,11 +159,12 @@ export const uploadAnswer = asyncHandler(async (req, res) => {
         const update = {
             $push: { submissions: submission._id },
             $inc: { currentScore: evaluation.score },
+            $addToSet: { viewedSolutions: questionId },
             lastAccessedAt: Date.now()
         };
 
         if (evaluation.isCorrect) {
-            update.$addToSet = { solvedQuestions: questionId };
+            update.$addToSet.solvedQuestions = questionId;
         }
 
         await Session.findByIdAndUpdate(sessionId, update);

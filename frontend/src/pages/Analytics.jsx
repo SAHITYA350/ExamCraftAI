@@ -92,7 +92,16 @@ const Analytics = () => {
 
   const studyPlan = analytics?.studyPlan || [];
   const weakTopics = analytics?.weakTopics || [];
-  const practiceHistory = analytics?.practiceHistory || [];
+  const rawHistory = analytics?.practiceHistory || [];
+  const practiceHistory = (rawHistory.length === 1 
+    ? [{ date: 'Initial', attempts: 0, correct: 0, incorrect: 0, accuracy: 0 }, ...rawHistory]
+    : rawHistory).map((d, i) => ({ 
+        ...d, 
+        name: d.date === 'Initial' ? 'Begin' : `S${i}`,
+        _sin: Math.sin(i * 1.0) * 8 + 35,
+        _cos: Math.cos(i * 0.7) * 10 + 55,
+        _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
+      }));
 
   const handleGenerateStudyPlan = async () => {
     try {
@@ -447,10 +456,10 @@ const Analytics = () => {
           <ChartPanel
             title="Daily Practice"
             subtitle="Neural Session Analysis"
-            type="area"
+            type="track"
             data={practiceHistory}
-            dataKeys={['attempts', 'correct', 'incorrect']}
-            colors={[CHART_COLORS.info, CHART_COLORS.success, CHART_COLORS.danger]}
+            dataKeys={['incorrect', 'correct']}
+            colors={[CHART_COLORS.danger, CHART_COLORS.success]}
             height={280}
           />
         </div>

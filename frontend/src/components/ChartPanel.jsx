@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  LineChart, Line
+  LineChart, Line, ComposedChart
 } from 'recharts';
 
 const CHART_COLORS = {
@@ -18,16 +18,52 @@ const CHART_COLORS = {
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+  const sessionTime = payload[0]?.payload?.time;
+  
   return (
-    <div className="glass-card p-3 border border-white/10 shadow-xl">
-      <p className="text-xs font-semibold text-gold mb-1">{label}</p>
-      {payload.map((item, i) => (
-        <p key={i} className="text-xs text-silk">
-          <span style={{ color: item.color }} className="font-medium">{item.name}: </span>
-          {typeof item.value === 'number' ? item.value.toFixed(1) : item.value}
-        </p>
-      ))}
+    <div className="glass-card p-3 border border-white/10 shadow-xl backdrop-blur-md">
+      <div className="flex items-center justify-between gap-4 mb-2 border-b border-white/5 pb-2">
+        <p className="text-[10px] font-bold text-gold uppercase tracking-widest">{label}</p>
+        {sessionTime && <p className="text-[9px] text-silver-400 font-medium">{sessionTime}</p>}
+      </div>
+      <div className="space-y-1.5">
+        {payload.map((item, i) => (
+          <div key={i} className="flex items-center justify-between gap-4">
+            <span className="text-[11px] text-silk/70 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.name}:
+            </span>
+            <span className="text-[11px] font-bold text-silk">
+              {typeof item.value === 'number' ? item.value.toFixed(1) : item.value}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
+  );
+};
+
+const CustomDot = (props) => {
+  const { cx, cy, stroke } = props;
+  return (
+    <motion.circle
+      cx={cx} cy={cy} r={5}
+      fill="#0A0A0A"
+      stroke={stroke}
+      strokeWidth={2}
+      initial={{ scale: 0.8 }}
+      animate={{ 
+        scale: [1, 1.2, 1],
+        opacity: [1, 0.6, 1],
+        strokeWidth: [2, 4, 2]
+      }}
+      transition={{ 
+        duration: 4, 
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+      filter="url(#nodeGlow)"
+    />
   );
 };
 
@@ -54,6 +90,10 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                     <feMergeNode in="SourceGraphic"/>
                   </feMerge>
                 </filter>
+                <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: '#606060', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
@@ -65,9 +105,13 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                   key={`area-${key}`}
                   type="monotone"
                   dataKey={key}
-                  stroke="none"
+                  stackId="1"
+                  stroke={chartColors[i % chartColors.length]}
+                  strokeWidth={2}
                   fill={`url(#gradient-${key})`}
-                  fillOpacity={1}
+                  fillOpacity={0.6}
+                  connectNulls={true}
+                  animationDuration={1500}
                 />
               ))}
               
@@ -78,10 +122,11 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                   dataKey={key}
                   stroke={chartColors[i % chartColors.length]}
                   strokeWidth={3}
+                  connectNulls={true}
                   dot={{ 
-                    r: 4, 
+                    r: 5, 
                     fill: chartColors[i % chartColors.length], 
-                    stroke: '#121212', 
+                    stroke: '#0A0A0A', 
                     strokeWidth: 2,
                     filter: 'url(#glow)'
                   }}
@@ -89,11 +134,12 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                     r: 7, 
                     fill: '#fff', 
                     stroke: chartColors[i % chartColors.length], 
-                    strokeWidth: 3,
+                    strokeWidth: 2,
                     filter: 'url(#glow)'
                   }}
                   name={key.charAt(0).toUpperCase() + key.slice(1)}
-                  animationDuration={1500}
+                  animationDuration={1200}
+                  filter="url(#glow)"
                 />
               ))}
             </LineChart>
@@ -111,9 +157,10 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
               {(dataKeys || ['value']).map((key, i) => (
                 <Bar
                   key={key}
+                  stackId="a"
                   dataKey={key}
                   fill={chartColors[i % chartColors.length]}
-                  radius={[6, 6, 0, 0]}
+                  radius={0}
                   name={key.charAt(0).toUpperCase() + key.slice(1)}
                 />
               ))}
@@ -169,12 +216,87 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                   dataKey={key}
                   stroke={chartColors[i % chartColors.length]}
                   strokeWidth={3}
-                  dot={{ r: 4, fill: chartColors[i % chartColors.length], strokeWidth: 2, stroke: '#121212' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  connectNulls={true}
+                  dot={{ 
+                    r: 5, 
+                    fill: chartColors[i % chartColors.length], 
+                    strokeWidth: 2, 
+                    stroke: '#0A0A0A',
+                    filter: 'url(#glow)'
+                  }}
+                  activeDot={{ 
+                    r: 7, 
+                    strokeWidth: 2,
+                    stroke: '#fff',
+                    fill: chartColors[i % chartColors.length],
+                    filter: 'url(#glow)'
+                  }}
                   name={key.charAt(0).toUpperCase() + key.slice(1)}
+                  filter="url(#glow)"
+                  animationDuration={1500}
                 />
               ))}
             </LineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'track':
+        const trackColors = colors || [CHART_COLORS.gold, CHART_COLORS.success, CHART_COLORS.info];
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            <ComposedChart data={data} margin={{ top: 20, right: 30, bottom: 20, left: -10 }}>
+              <CartesianGrid strokeDasharray="1 8" stroke="rgba(255,255,255,0.08)" vertical={false} />
+              
+              {/* Decorative Mathematical Waves (Sin/Cos/Tan theme) */}
+              <Line 
+                type="monotone" dataKey="_sin" stroke="rgba(201,168,76,0.12)" strokeWidth={1} 
+                dot={false} isAnimationActive={true} animationDuration={3000} strokeDasharray="5 5"
+              />
+              <Line 
+                type="monotone" dataKey="_cos" stroke="rgba(52,152,219,0.08)" strokeWidth={1} 
+                dot={false} isAnimationActive={true} animationDuration={4000}
+              />
+              <Line 
+                type="basis" dataKey="_tan" stroke="rgba(231,76,60,0.06)" strokeWidth={1} 
+                dot={false} isAnimationActive={true} animationDuration={5000} strokeDasharray="3 3"
+              />
+
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 700 }} 
+                axisLine={false} 
+                tickLine={false}
+                padding={{ left: 20, right: 20 }}
+              />
+              <YAxis 
+                domain={[0, 100]} 
+                tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 700 }} 
+                axisLine={false} 
+                tickLine={false} 
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }} />
+              
+              {(dataKeys || ['value']).map((key, i) => (
+                <Line
+                  key={key}
+                  type="stepAfter"
+                  dataKey={key}
+                  stroke={trackColors[i % trackColors.length]}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  connectNulls={true}
+                  dot={<CustomDot />}
+                  activeDot={{ 
+                    r: 10, 
+                    fill: trackColors[i % trackColors.length], 
+                    stroke: '#fff', 
+                    strokeWidth: 3,
+                    filter: 'url(#nodeGlow)'
+                  }}
+                  animationDuration={1500}
+                />
+              ))}
+            </ComposedChart>
           </ResponsiveContainer>
         );
 

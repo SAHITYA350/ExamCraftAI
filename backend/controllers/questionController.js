@@ -132,8 +132,7 @@ export const uploadMaterial = asyncHandler(async (req, res) => {
         // Secure Cloud Storage
         const uploadResult = await uploadToImageKit(file.path, `${Date.now()}-${file.originalname}`, "scientific-materials");
         
-        // Resource Cleanup
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        // Resource Cleanup is handled inside uploadToImageKit
 
         if (!uploadResult) {
             throw new Error(`Cloud sync failed for ${file.originalname}`);

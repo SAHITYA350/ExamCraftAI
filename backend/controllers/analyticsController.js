@@ -75,18 +75,31 @@ export const calculateAndStoreAnalytics = async (userId) => {
             : 0;
     });
 
-    const practiceHistory = Object.keys(historyMap).sort().map(date => {
-        const daySubmissions = submissions.filter(s => s.createdAt.toISOString().split('T')[0] === date);
-        const dayCorrect = daySubmissions.filter(s => s.isCorrect).length;
-        const count = daySubmissions.length;
+    // Session-based granular history
+    const sessionGroups = {};
+    submissions.forEach(sub => {
+        const sId = sub.session?._id?.toString() || 'orphaned';
+        if (!sessionGroups[sId]) {
+            sessionGroups[sId] = {
+                date: sub.createdAt,
+                submissions: []
+            };
+        }
+        sessionGroups[sId].submissions.push(sub);
+    });
+
+    const practiceHistory = Object.values(sessionGroups).sort((a, b) => a.date - b.date).map(session => {
+        const count = session.submissions.length;
+        const dayCorrect = session.submissions.filter(s => s.isCorrect).length;
         return {
-            date,
+            date: session.date.toISOString().split('T')[0],
+            time: session.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             attempts: count,
             correct: dayCorrect,
             incorrect: Math.max(0, count - dayCorrect),
             accuracy: Math.round((dayCorrect / count) * 100)
         };
-    }).slice(-7);
+    }).slice(-12); // Last 12 sessions for better trend visibility
 
     // Readiness Index: Combined metric of accuracy and participation
     const readinessIndex = Math.min(100, Math.round(overallAccuracy * 0.7 + Math.min(totalAttempts * 2, 30)));

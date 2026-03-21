@@ -6,7 +6,7 @@ import {
   BookOpen, FileUp, Layers, Sparkles, Type, Brain, Zap, Clock,
   AlertTriangle, ChevronRight, UploadCloud, FileImage,
   TrendingUp, Award, BarChart2, Target, Shield, Star,
-  ArrowRight, Check, RotateCcw, PenLine, Leaf, Plus, LayoutDashboard
+  ArrowRight, Check, RotateCcw, PenLine, Plus, LayoutDashboard
 } from 'lucide-react';
 
 import questionService from '../services/questionService';
@@ -142,6 +142,7 @@ export default function UploadMaterial() {
   const [solvedQIds,     setSolvedQIds]     = useState([]); // Question IDs
   const [viewedSolutions, setViewedSolutions] = useState([]); // Question IDs
   const [viewingSol,      setViewingSol]     = useState(null); // { id, text } or null
+  const [sessionSubmissions, setSessionSubmissions] = useState([]); // Full submission history
   const [sessionData,    setSessionData]    = useState(null); // Full session object on finish
 
   // Derived state to fix reference errors
@@ -213,6 +214,7 @@ export default function UploadMaterial() {
       if (s.submissions) {
         const solved = s.submissions.map(sub => sub.question?._id || sub.question);
         setSolvedQIds(solved);
+        setSessionSubmissions(s.submissions);
       }
       if (s.bookmarks) {
         setBookmarks(s.bookmarks);
@@ -448,6 +450,12 @@ export default function UploadMaterial() {
 
       // Store full result for analysis display
       setPickedQ(prev => ({ ...prev, lastResult: result.data }));
+      setSessionSubmissions(prev => [...prev, result.data]);
+      
+      // Update viewed status to "Lock" the question after submission
+      if (!viewedSolutions.includes(qId)) {
+        setViewedSolutions(prev => [...prev, qId]);
+      }
     } catch (err) {
       console.error("Evaluation failed", err);
       alert("AI Evaluation failed. Please check your connection.");
@@ -1151,151 +1159,197 @@ export default function UploadMaterial() {
                   </p>
                 </div>
 
-                {/* Solution upload card */}
-                <div className="glass-card overflow-hidden border border-white/8 relative">
-                  {/* Card header */}
-                  <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <span className="text-xs sm:text-sm font-semibold text-silk flex items-center gap-2">
-                      <Award size={14} className="text-gold" /> Submit Your Solution
-                    </span>
-                    <div className="flex bg-dark-300 rounded-lg p-0.5 gap-0.5 border border-white/5 w-full sm:w-auto">
-                      {[['upload','Upload File'],['text','Write Text']].map(([m, label]) => (
-                        <button key={m} onClick={() => setInputMode(m)}
-                          className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all
-                            ${inputMode === m ? 'bg-gold text-dark shadow' : 'text-silver-200 hover:text-silk'}`}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                {/* Detect Lock State */}
+                {(() => {
+                  const qId = pickedQ._id || pickedQ.id;
+                  const isLocked = viewedSolutions.includes(qId) || solvedQIds.includes(qId);
+                  const lastAttempt = [...sessionSubmissions].reverse().find(sub => (sub.question?._id || sub.question) === qId);
 
-                  <div className="p-4 sm:p-6 lg:p-8">
-                    {/* Fair Attempt Warning */}
-                    <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/10 flex items-start gap-3">
-                      <Shield size={16} className="text-gold shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-silk mb-1">Fair Attempt Policy</p>
-                        <p className="text-[10px] sm:text-xs text-silver-200/70 leading-relaxed">
-                          Once you view the AI solution, this question will be <span className="text-gold font-bold">permanently locked</span> for submission to ensure honest practice.
-                        </p>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm("Are you sure? Viewing the solution will permanently lock this question from further attempts.")) {
-                              const solText = `Correct Answer: ${pickedQ.correctAnswer}\n${pickedQ.options && pickedQ.options.length > 0 ? `\nOptions:\n${pickedQ.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}\n` : ''}${pickedQ.explanation ? `\nExplanation:\n${pickedQ.explanation}` : ''}`;
-                              handleViewSolution(pickedQ._id || pickedQ.id, solText);
-                            }
-                          }}
-                          className="mt-3 text-[10px] font-black text-gold uppercase tracking-widest hover:underline flex items-center gap-2">
-                          <Brain size={12} /> View AI Solution Now
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* SOLUTION PREVIEW (LOCKED) */}
-                    <AnimatePresence>
-                      {viewingSol && viewingSol.id === (pickedQ._id || pickedQ.id) && (
-                        <motion.div 
-                          initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                          className="mb-6 p-5 rounded-2xl bg-dark-400 border border-success/30 shadow-lg shadow-success/5 overflow-hidden">
-                          <div className="flex items-center gap-2 mb-3">
-                            <CheckCircle size={14} className="text-success" />
-                            <h5 className="text-[10px] font-black text-silver-200 uppercase tracking-widest">Correct Solution (Locked)</h5>
-                          </div>
-                          <p className="text-xs sm:text-sm text-silk leading-relaxed font-monospace bg-black/20 p-4 rounded-xl border border-white/5 whitespace-pre-wrap">
-                            {viewingSol.text || "Solution details not available."}
-                          </p>
-                          <p className="text-[9px] text-danger/60 mt-3 font-bold uppercase tracking-tighter">
-                            Note: This question is now locked. You cannot submit an answer for it.
-                          </p>
-                          <button 
-                            onClick={() => { setSolveMode(false); setPickedQ(null); setViewingSol(null); }}
-                            className="mt-4 w-full py-2 bg-white/5 hover:bg-white/10 text-silk text-[10px] font-bold uppercase tracking-widest rounded-lg border border-white/5 transition-all">
-                            Back to Question List
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {inputMode === 'upload' ? (
-                      <div
-                        onDrop={handleSolDrop}
-                        onDragOver={e => { e.preventDefault(); setSolDrag(true); }}
-                        onDragLeave={() => setSolDrag(false)}
-                        className={`border-2 border-dashed rounded-2xl p-6 sm:p-10 lg:p-14 text-center transition-all
-                          ${solDrag ? 'border-gold bg-gold/5 scale-[1.01]' : 'border-white/10 hover:border-gold/30 bg-dark-200/30'}`}>
-                        {!solFile ? (
-                          <div className="flex flex-col items-center gap-3 sm:gap-4">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-dark-300/80 flex items-center justify-center">
-                              <Upload size={22} className="text-silver-200 sm:hidden" />
-                              <Upload size={30} className="text-silver-200 hidden sm:block" />
-                            </div>
-                            <div>
-                              <p className="text-sm sm:text-base lg:text-lg text-silk font-medium mb-1">Drag & Drop Your Answer</p>
-                              <p className="text-[11px] sm:text-xs text-silver-200/50">Image, PDF, or Word document of your solution</p>
-                            </div>
-                            <button onClick={() => solFileRef.current?.click()}
-                              className="btn-outline-gold py-2 sm:py-2.5 px-5 sm:px-7 rounded-xl text-xs sm:text-sm">
-                              Choose File
-                            </button>
-                            <input type="file" ref={solFileRef}
-                              onChange={e => setSolFile(e.target.files[0])}
-                              className="hidden" accept="image/*,.pdf,.doc,.docx" />
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 sm:gap-4 bg-dark-300 px-4 sm:px-5 py-3 sm:py-4 rounded-xl border border-white/10 max-w-sm mx-auto">
-                            <FileImage size={24} className="text-gold shrink-0" />
-                            <div className="flex-1 min-w-0 text-left">
-                              <p className="text-xs sm:text-sm font-semibold text-silk truncate">{solFile.name}</p>
-                              <p className="text-[10px] sm:text-xs text-silver-200/60">{(solFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
-                            <button onClick={() => setSolFile(null)}
-                              className="p-1.5 hover:bg-danger/20 rounded-full text-silver-200/40 hover:text-danger transition-colors shrink-0">
-                              <X size={15} />
-                            </button>
+                  return (
+                    <div className="glass-card overflow-hidden border border-white/8 relative">
+                      {/* Card header */}
+                      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <span className="text-xs sm:text-sm font-semibold text-silk flex items-center gap-2">
+                          <Award size={14} className="text-gold" /> 
+                          {isLocked ? 'Solution Overview' : 'Submit Your Solution'}
+                        </span>
+                        {!isLocked && (
+                          <div className="flex bg-dark-300 rounded-lg p-0.5 gap-0.5 border border-white/5 w-full sm:w-auto">
+                            {[['upload','Upload File'],['text','Write Text']].map(([m, label]) => (
+                              <button key={m} onClick={() => setInputMode(m)}
+                                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all
+                                  ${inputMode === m ? 'bg-gold text-dark shadow' : 'text-silver-200 hover:text-silk'}`}>
+                                {label}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="relative">
-                        <textarea value={plainText} onChange={e => setPlainText(e.target.value)}
-                          onPaste={(e) => {
-                            e.preventDefault();
-                            alert("Pasting is disabled for this session to ensure honest practice. Please type your reasoning step-by-step.");
-                          }}
-                          placeholder="Write your step-by-step solution here…"
-                          className="w-full h-52 sm:h-64 lg:h-72 bg-dark-300 border border-white/10 rounded-2xl p-4 sm:p-6 text-silk text-sm font-light focus:outline-none focus:border-gold/30 transition-all resize-none placeholder-silver-200/25 leading-relaxed" />
-                        <div className="absolute bottom-3 right-4 text-[10px] text-silver-200/40 font-mono">
-                          {plainText.length} chars
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Submit button */}
-                    <button onClick={handleSubmit}
-                      disabled={(inputMode === 'upload' ? !solFile : !plainText.trim()) || submitting}
-                      className={`w-full mt-5 sm:mt-6 py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 sm:gap-3
-                        ${(inputMode === 'upload' ? solFile : plainText.trim())
-                          ? 'btn-gold shadow-lg shadow-gold/20 active:scale-[0.98]'
-                          : 'bg-dark-300 text-silver-200/40 cursor-not-allowed border border-white/5'}`}>
-                      {submitting
-                        ? <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-dark border-t-transparent rounded-full animate-spin" /> Evaluating with AI…</>
-                        : <><UploadCloud size={16} /> Submit Solution</>}
-                    </button>
+                      <div className="p-4 sm:p-6 lg:p-8">
+                        {/* Fair Attempt Warning (Only if NOT locked) */}
+                        {!isLocked && (
+                          <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/10 flex items-start gap-3">
+                            <Shield size={16} className="text-gold shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-bold text-silk mb-1">Fair Attempt Policy</p>
+                              <p className="text-[10px] sm:text-xs text-silver-200/70 leading-relaxed">
+                                Once you view the AI solution, this question will be <span className="text-gold font-bold">permanently locked</span> for submission to ensure honest practice.
+                              </p>
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm("Are you sure? Viewing the solution will permanently lock this question from further attempts.")) {
+                                    handleViewSolution(pickedQ._id || pickedQ.id, pickedQ.correctAnswer);
+                                  }
+                                }}
+                                className="mt-3 text-[10px] font-black text-gold uppercase tracking-widest hover:underline flex items-center gap-2">
+                                <Brain size={12} /> View AI Solution Now
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
-                    <div className="flex items-start gap-2.5 mt-4 sm:mt-5 px-1">
-                      <div className="p-1 sm:p-1.5 bg-success/10 rounded-md shrink-0 mt-0.5">
-                        <Leaf size={12} className="text-success" />
+                        {/* SOLUTION PREVIEW (LOCKED/REVEALED) */}
+                        {(viewingSol?.id === qId || isLocked) && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                            className="space-y-5">
+                            
+                            {/* Comparison Row (if attempt exists) */}
+                            {lastAttempt && (
+                              <div className="p-5 rounded-2xl bg-danger/5 border border-danger/10">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <X size={14} className="text-danger" />
+                                  <h5 className="text-[10px] font-black text-silver-200 uppercase tracking-widest">Your Previous Attempt</h5>
+                                </div>
+                                <p className="text-xs sm:text-sm text-silk/60 leading-relaxed italic bg-black/10 p-3 rounded-xl border border-white/5">
+                                  {lastAttempt.userAnswer || "Visual/Image submission provided."}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Correct Solution */}
+                            <div className="p-5 rounded-2xl bg-dark-400 border border-success/30 shadow-lg shadow-success/5">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle size={14} className="text-success" />
+                                  <h5 className="text-[10px] font-black text-silver-200 uppercase tracking-widest">AI Correct Solution (Locked)</h5>
+                                </div>
+                                <span className="text-[9px] text-success font-bold uppercase tracking-widest bg-success/10 px-2 py-0.5 rounded border border-success/20">Verified Truth</span>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                                  <p className="text-xs sm:text-sm font-bold text-success mb-2 uppercase tracking-tighter">Answer</p>
+                                  <p className="text-sm sm:text-base text-silk font-bold leading-relaxed">{pickedQ.correctAnswer || viewingSol?.text}</p>
+                                </div>
+                                
+                                <div className="p-4 rounded-xl bg-black/10 border border-white/5">
+                                  <p className="text-xs sm:text-sm font-bold text-silver-500 mb-2 uppercase tracking-tighter">AI Strong Reasoning Explanation</p>
+                                  <p className="text-sm text-silk/80 leading-relaxed whitespace-pre-wrap">{pickedQ.explanation || "Full logic and explanation analyzed for this question."}</p>
+                                </div>
+                              </div>
+
+                              <p className="text-[9px] text-danger/60 mt-4 font-bold uppercase tracking-tighter text-center">
+                                Note: This question is now locked. You cannot submit an answer for it.
+                              </p>
+                              <button 
+                                onClick={() => { setSolveMode(false); setPickedQ(null); setViewingSol(null); }}
+                                className="mt-5 w-full py-3 bg-white/5 hover:bg-white/10 text-silk text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/8 transition-all active:scale-[0.98]">
+                                ← Back to Question List
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Submission Inputs (Only if NOT locked) */}
+                        {!isLocked && !viewingSol && (
+                          <>
+                            {inputMode === 'upload' ? (
+                              <div
+                                onDrop={handleSolDrop}
+                                onDragOver={e => { e.preventDefault(); setSolDrag(true); }}
+                                onDragLeave={() => setSolDrag(false)}
+                                className={`border-2 border-dashed rounded-2xl p-6 sm:p-10 lg:p-14 text-center transition-all
+                                  ${solDrag ? 'border-gold bg-gold/5 scale-[1.01]' : 'border-white/10 hover:border-gold/30 bg-dark-200/30'}`}>
+                                {!solFile ? (
+                                  <div className="flex flex-col items-center gap-3 sm:gap-4">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-dark-300/80 flex items-center justify-center">
+                                      <Upload size={22} className="text-silver-200 sm:hidden" />
+                                      <Upload size={30} className="text-silver-200 hidden sm:block" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm sm:text-base lg:text-lg text-silk font-medium mb-1">Drag & Drop Your Answer</p>
+                                      <p className="text-[11px] sm:text-xs text-silver-200/50">Image, PDF, or Word document of your solution</p>
+                                    </div>
+                                    <button onClick={() => solFileRef.current?.click()}
+                                      className="btn-outline-gold py-2 sm:py-2.5 px-5 sm:px-7 rounded-xl text-xs sm:text-sm">
+                                      Choose File
+                                    </button>
+                                    <input type="file" ref={solFileRef}
+                                      onChange={e => setSolFile(e.target.files[0])}
+                                      className="hidden" accept="image/*,.pdf,.doc,.docx" />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-3 sm:gap-4 bg-dark-300 px-4 sm:px-5 py-3 sm:py-4 rounded-xl border border-white/10 max-w-sm mx-auto">
+                                    <FileImage size={24} className="text-gold shrink-0" />
+                                    <div className="flex-1 min-w-0 text-left">
+                                      <p className="text-xs sm:text-sm font-semibold text-silk truncate">{solFile.name}</p>
+                                      <p className="text-[10px] sm:text-xs text-silver-200/60">{(solFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
+                                    <button onClick={() => setSolFile(null)}
+                                      className="p-1.5 hover:bg-danger/20 rounded-full text-silver-200/40 hover:text-danger transition-colors shrink-0">
+                                      <X size={15} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <textarea value={plainText} onChange={e => setPlainText(e.target.value)}
+                                  onPaste={(e) => {
+                                    e.preventDefault();
+                                    alert("Pasting is disabled for this session to ensure honest practice. Please type your reasoning step-by-step.");
+                                  }}
+                                  placeholder="Write your step-by-step solution here…"
+                                  className="w-full h-52 sm:h-64 lg:h-72 bg-dark-300 border border-white/10 rounded-2xl p-4 sm:p-6 text-silk text-sm font-light focus:outline-none focus:border-gold/30 transition-all resize-none placeholder-silver-200/25 leading-relaxed" />
+                                <div className="absolute bottom-3 right-4 text-[10px] text-silver-200/40 font-mono">
+                                  {plainText.length} chars
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Submit button */}
+                            <button onClick={handleSubmit}
+                              disabled={(inputMode === 'upload' ? !solFile : !plainText.trim()) || submitting}
+                              className={`w-full mt-5 sm:mt-6 py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 sm:gap-3
+                                ${(inputMode === 'upload' ? solFile : plainText.trim())
+                                  ? 'btn-gold shadow-lg shadow-gold/20 active:scale-[0.98]'
+                                  : 'bg-dark-300 text-silver-200/40 cursor-not-allowed border border-white/5'}`}>
+                              {submitting
+                                ? <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-dark border-t-transparent rounded-full animate-spin" /> Evaluating with AI…</>
+                                : <><UploadCloud size={16} /> Submit Solution</>}
+                            </button>
+
+                            <div className="flex items-start gap-2.5 mt-4 sm:mt-5 px-1">
+                              <div className="p-1 sm:p-1.5 bg-success/10 rounded-md shrink-0 mt-0.5">
+                                <CheckCircle size={12} className="text-success" />
+                              </div>
+                              <p className="text-[10px] sm:text-xs text-silver-200/50 leading-relaxed">
+                                By submitting, you confirm this is your own original solution and adheres to academic integrity policy.
+                              </p>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <p className="text-[10px] sm:text-xs text-silver-200/50 leading-relaxed">
-                        By submitting, you confirm this is your own original solution and adheres to academic integrity policy.
-                      </p>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
+
               </motion.div>
             )}
           </motion.div>
-        )}
+            )}
 
         {/* ════════════════════════════════════════════
             6 — Results & Academic Readiness Output
@@ -1452,6 +1506,42 @@ export default function UploadMaterial() {
                 </ul>
               </div>
             </div>
+
+            {/* AI Source Truth & Explanation */}
+            <motion.div 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: 0.2 }}
+               className="glass-card mb-5 border border-success/10 bg-success/5 relative overflow-hidden"
+            >
+               <div className="absolute top-0 right-0 p-3 opacity-5">
+                  <Shield size={60} className="text-success" />
+               </div>
+               <div className="p-5 sm:p-7 relative z-10 text-left">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CheckCircle size={16} className="text-success" />
+                    <h4 className="text-[10px] sm:text-xs font-black text-silver-200 uppercase tracking-[0.2em]">AI Correct Solution & Explanation</h4>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <p className="text-[10px] text-dark-700 uppercase font-bold mb-2 tracking-widest">The Correct Answer</p>
+                    <div className="p-4 rounded-xl bg-dark-400/60 border border-success/20">
+                      <p className="text-sm sm:text-base font-bold text-success leading-relaxed">
+                        {pickedQ?.correctAnswer || 'Not provided by AI generator.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] text-dark-700 uppercase font-bold mb-2 tracking-widest">Full Step-by-Step Explanation</p>
+                    <div className="p-4 rounded-xl bg-dark-400/30 border border-white/5">
+                      <p className="text-sm sm:text-base text-silk/90 leading-relaxed whitespace-pre-wrap">
+                        {pickedQ?.explanation || 'Analysis complete. The underlying principles align with the provided answer.'}
+                      </p>
+                    </div>
+                  </div>
+               </div>
+            </motion.div>
 
             {/* Progress tracking */}
             <div className="glass-card p-4 sm:p-5 mb-5 sm:mb-6 text-center">
