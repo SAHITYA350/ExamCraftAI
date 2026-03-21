@@ -6,7 +6,11 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv() # Standard loading for production/container environments
+load_dotenv() # Load from current directory or OS environment (Production/Render)
+
+# Fallback for local development if GROQ_API_KEY is not found
+if not os.getenv("GROQ_API_KEY"):
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
 
 # ======================================
 # SETUP - Groq AI client
