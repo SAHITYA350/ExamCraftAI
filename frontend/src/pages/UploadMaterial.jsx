@@ -488,7 +488,8 @@ export default function UploadMaterial() {
   const handleTimerExpired = async () => {
     if (pickedQ) {
        // Lock the question and show solution
-       handleViewSolution(pickedQ._id || pickedQ.id, pickedQ.correctAnswer);
+       const solText = `Correct Answer: ${pickedQ.correctAnswer}\n${pickedQ.options && pickedQ.options.length > 0 ? `\nOptions:\n${pickedQ.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}\n` : ''}${pickedQ.explanation ? `\nExplanation:\n${pickedQ.explanation}` : ''}`;
+       handleViewSolution(pickedQ._id || pickedQ.id, solText);
        alert("⏱️ Time is up! This question has been locked to maintain academic integrity. You can review the correct solution, but you can no longer submit an answer for it.");
     }
   };
@@ -1180,7 +1181,8 @@ export default function UploadMaterial() {
                         <button 
                           onClick={() => {
                             if (window.confirm("Are you sure? Viewing the solution will permanently lock this question from further attempts.")) {
-                              handleViewSolution(pickedQ._id || pickedQ.id, pickedQ.correctAnswer);
+                              const solText = `Correct Answer: ${pickedQ.correctAnswer}\n${pickedQ.options && pickedQ.options.length > 0 ? `\nOptions:\n${pickedQ.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}\n` : ''}${pickedQ.explanation ? `\nExplanation:\n${pickedQ.explanation}` : ''}`;
+                              handleViewSolution(pickedQ._id || pickedQ.id, solText);
                             }
                           }}
                           className="mt-3 text-[10px] font-black text-gold uppercase tracking-widest hover:underline flex items-center gap-2">
@@ -1199,7 +1201,7 @@ export default function UploadMaterial() {
                             <CheckCircle size={14} className="text-success" />
                             <h5 className="text-[10px] font-black text-silver-200 uppercase tracking-widest">Correct Solution (Locked)</h5>
                           </div>
-                          <p className="text-xs sm:text-sm text-silk leading-relaxed font-monospace bg-black/20 p-4 rounded-xl border border-white/5">
+                          <p className="text-xs sm:text-sm text-silk leading-relaxed font-monospace bg-black/20 p-4 rounded-xl border border-white/5 whitespace-pre-wrap">
                             {viewingSol.text || "Solution details not available."}
                           </p>
                           <p className="text-[9px] text-danger/60 mt-3 font-bold uppercase tracking-tighter">
