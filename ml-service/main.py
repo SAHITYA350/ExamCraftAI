@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
+load_dotenv() # Standard loading for production/container environments
 
 # ======================================
 # SETUP - Groq AI client
