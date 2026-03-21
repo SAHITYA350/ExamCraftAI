@@ -363,6 +363,65 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
           </ResponsiveContainer>
         );
 
+      case 'neuralWave':
+        const waveColors = colors || [CHART_COLORS.success, CHART_COLORS.gold, CHART_COLORS.info];
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            <ComposedChart data={data} margin={{ top: 20, right: 30, bottom: 20, left: -15 }}>
+              <defs>
+                {waveColors.map((color, i) => (
+                  <linearGradient key={`wave-grad-${i}`} id={`wave-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="1 8" stroke="rgba(255,255,255,0.1)" vertical={false} />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700 }} 
+                axisLine={false} 
+                tickLine={false}
+              />
+              <YAxis 
+                hide={true} 
+                domain={[0, 100]} 
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+              <Legend 
+                iconType="circle" 
+                wrapperStyle={{ paddingTop: '20px', fontSize: '10px', textTransform: 'uppercase', fontWeight: 800, color: '#B0B0B0' }} 
+              />
+              
+              {/* Reference Area/Main Surface (Accuracy) */}
+              <Area
+                type="monotone"
+                dataKey={dataKeys?.[0] || 'accuracy'}
+                stroke={waveColors[0]}
+                strokeWidth={4}
+                fill={`url(#wave-grad-0)`}
+                fillOpacity={1}
+                strokeLinecap="round"
+                animationDuration={2000}
+              />
+
+              {/* Secondary Metrics as glowing lines */}
+              {(dataKeys?.slice(1) || []).map((key, i) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={waveColors[i + 1 % waveColors.length]}
+                  strokeWidth={2}
+                  dot={<CustomDot />}
+                  animationDuration={2500 + i * 500}
+                  filter="url(#glow)"
+                />
+              ))}
+            </ComposedChart>
+          </ResponsiveContainer>
+        );
+
       default:
         return null;
     }

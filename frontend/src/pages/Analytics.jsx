@@ -71,23 +71,27 @@ const Analytics = () => {
       const rawHistory = res.data?.practiceHistory || [];
       const mappedHistory = (rawHistory.length === 1
         ? [{ date: 'Initial', attempts: 0, correct: 0, incorrect: 0, accuracy: 0 }, ...rawHistory]
-        : rawHistory).map((d, i) => ({
-            ...d,
-            name: d.date === 'Initial' ? 'Begin' : `S${i}`,
-            _sin: Math.sin(i * 1.0) * 8 + 35,
-            _cos: Math.cos(i * 0.7) * 10 + 55,
-            _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
-          }));
+        : rawHistory).map((d, i) => {
+            const acc = d.accuracy || 0;
+            // Derive "Neural" metrics for the wavefront visualization
+            const velocity = Math.min(100, Math.max(15, 65 + (Math.sin(i * 0.8) * 20)));
+            const complexity = Math.min(100, Math.max(10, 35 + (Math.cos(i * 0.6) * 15) + (i * 1.5)));
+            const score = Math.round((acc * 0.6 + velocity * 0.3 + complexity * 0.1));
 
-      // Transform practice history for radial visualization
-      const radialData = (mappedHistory || []).slice(-6).map((s, i) => ({
-        name: s.name || `Session ${i + 1}`,
-        value: s.accuracy || 0,
-        fill: s.accuracy >= 80 ? CHART_COLORS.success : s.accuracy >= 60 ? CHART_COLORS.warning : CHART_COLORS.danger
-      }));
+            return {
+              ...d,
+              name: d.date === 'Initial' ? 'Begin' : `S${i}`,
+              accuracy: acc,
+              velocity,
+              complexity,
+              score,
+              _sin: Math.sin(i * 1.0) * 8 + 35,
+              _cos: Math.cos(i * 0.7) * 10 + 55,
+              _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
+            };
+        });
 
       setPracticeHistory(mappedHistory);
-      setRadialHistory(radialData);
 
     } catch (err) {
       console.error("Failed to fetch analytics", err);
@@ -469,12 +473,13 @@ const Analytics = () => {
           <AccuracyChart data={practiceHistory} />
 
           <ChartPanel
-            title="Session Performance Orbit"
-            subtitle="Individual session accuracy trajectory"
-            type="radialBar"
-            data={radialHistory}
-            dataKeys={['value']}
-            height={280}
+            title="Neural Session Wavefront"
+            subtitle="Multi-metric performance trajectory"
+            type="neuralWave"
+            data={practiceHistory}
+            dataKeys={['accuracy', 'velocity', 'complexity']}
+            colors={[CHART_COLORS.success, CHART_COLORS.gold, CHART_COLORS.info]}
+            height={320}
           />
         </div>
       )}
