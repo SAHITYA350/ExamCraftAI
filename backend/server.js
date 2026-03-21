@@ -21,11 +21,12 @@ const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split('
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        const isRender = origin && origin.includes("onrender.com");
+        if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin) || isRender) {
             callback(null, true);
         } else {
             console.warn(`[CORS] Rejected origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
     credentials: true,
