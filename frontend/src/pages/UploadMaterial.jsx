@@ -12,6 +12,7 @@ import {
 import questionService from '../services/questionService';
 import submissionService from '../services/submissionService';
 import sessionService from '../services/sessionService';
+import VoiceInput from '../components/VoiceInput';
 
 /* ─── Constants ─────────────────────────────────────── */
 const MOCK_TOPICS = [];
@@ -97,6 +98,21 @@ function SectionHead({ badge, badgeIcon: BadgeIcon, title, subtitle, step, total
     </div>
   );
 }
+
+/* ─── Helper: Resolve Option Letter to Text ─────────── */
+const resolveAnswer = (q) => {
+  if (!q) return '';
+  const ans = q.correctAnswer;
+  if (!ans) return '';
+  if (ans.length === 1 && /^[A-D]$/i.test(ans) && q.options && q.options.length > 0) {
+    const idx = ans.toUpperCase().charCodeAt(0) - 65;
+    if (idx >= 0 && idx < q.options.length) {
+      // Strip common prefixes like "A) ", "A. ", "1. " for a cleaner 'short answer'
+      return q.options[idx].replace(/^[A-D0-9][).]\s*/i, '');
+    }
+  }
+  return ans;
+};
 
 /* ─── Main page ──────────────────────────────────────── */
 export default function UploadMaterial() {
@@ -496,7 +512,7 @@ export default function UploadMaterial() {
   const handleTimerExpired = async () => {
     if (pickedQ) {
        // Lock the question and show solution
-       const solText = `Correct Answer: ${pickedQ.correctAnswer}\n${pickedQ.options && pickedQ.options.length > 0 ? `\nOptions:\n${pickedQ.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}\n` : ''}${pickedQ.explanation ? `\nExplanation:\n${pickedQ.explanation}` : ''}`;
+       const solText = `Correct Answer: ${resolveAnswer(pickedQ)}\n${pickedQ.options && pickedQ.options.length > 0 ? `\nOptions:\n${pickedQ.options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n')}\n` : ''}${pickedQ.explanation ? `\nExplanation:\n${pickedQ.explanation}` : ''}`;
        handleViewSolution(pickedQ._id || pickedQ.id, solText);
        alert("⏱️ Time is up! This question has been locked to maintain academic integrity. You can review the correct solution, but you can no longer submit an answer for it.");
     }
@@ -638,9 +654,12 @@ export default function UploadMaterial() {
                 </motion.div>
               ) : (
                 <motion.div key="text-area" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mb-4">
-                  <div className="mb-3 flex items-center gap-2 text-xs text-silver-200/60">
-                    <Type size={13} className="text-gold" />
-                    <span>Paste or type your syllabus content below</span>
+                  <div className="mb-3 flex items-center justify-between gap-2 text-xs text-silver-200/60">
+                    <div className="flex items-center gap-2">
+                      <Type size={13} className="text-gold" />
+                      <span>Paste or type your syllabus content below</span>
+                    </div>
+                    <VoiceInput onResult={(text) => setTextInput(prev => prev + (prev.length > 0 ? ' ' : '') + text)} />
                   </div>
                   <textarea value={textInput} onChange={e => setTextInput(e.target.value)}
                     placeholder="e.g. Unit 1: Integration\nUnit 2: Differential Equations\nUnit 3: Probability..."
@@ -1199,7 +1218,7 @@ export default function UploadMaterial() {
                               <button 
                                 onClick={() => {
                                   if (window.confirm("Are you sure? Viewing the solution will permanently lock this question from further attempts.")) {
-                                    handleViewSolution(pickedQ._id || pickedQ.id, pickedQ.correctAnswer);
+                                    handleViewSolution(pickedQ._id || pickedQ.id, resolveAnswer(pickedQ));
                                   }
                                 }}
                                 className="mt-3 text-[10px] font-black text-gold uppercase tracking-widest hover:underline flex items-center gap-2">
@@ -1241,7 +1260,7 @@ export default function UploadMaterial() {
                               <div className="space-y-4">
                                 <div className="p-4 rounded-xl bg-black/20 border border-white/5">
                                   <p className="text-xs sm:text-sm font-bold text-success mb-2 uppercase tracking-tighter">Answer</p>
-                                  <p className="text-sm sm:text-base text-silk font-bold leading-relaxed">{pickedQ.correctAnswer || viewingSol?.text}</p>
+                                  <p className="text-sm sm:text-base text-silk font-bold leading-relaxed">{resolveAnswer(pickedQ) || viewingSol?.text}</p>
                                 </div>
                                 
                                 <div className="p-4 rounded-xl bg-black/10 border border-white/5">
@@ -1306,6 +1325,13 @@ export default function UploadMaterial() {
                               </div>
                             ) : (
                               <div className="relative">
+                                <div className="flex items-center justify-between gap-2 mb-3 px-1">
+                                  <div className="flex items-center gap-2 text-xs text-silver-200/60">
+                                    <PenLine size={13} className="text-gold" />
+                                    <span>Type your answer below</span>
+                                  </div>
+                                  <VoiceInput onResult={(text) => setPlainText(prev => prev + (prev.length > 0 ? ' ' : '') + text)} />
+                                </div>
                                 <textarea value={plainText} onChange={e => setPlainText(e.target.value)}
                                   onPaste={(e) => {
                                     e.preventDefault();
@@ -1527,7 +1553,7 @@ export default function UploadMaterial() {
                     <p className="text-[10px] text-dark-700 uppercase font-bold mb-2 tracking-widest">The Correct Answer</p>
                     <div className="p-4 rounded-xl bg-dark-400/60 border border-success/20">
                       <p className="text-sm sm:text-base font-bold text-success leading-relaxed">
-                        {pickedQ?.correctAnswer || 'Not provided by AI generator.'}
+                        {resolveAnswer(pickedQ) || 'Not provided by AI generator.'}
                       </p>
                     </div>
                   </div>

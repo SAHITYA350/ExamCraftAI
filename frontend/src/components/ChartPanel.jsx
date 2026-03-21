@@ -2,7 +2,9 @@ import { motion } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  LineChart, Line, ComposedChart
+  LineChart, Line, ComposedChart,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  RadialBarChart, RadialBar
 } from 'recharts';
 
 const CHART_COLORS = {
@@ -297,6 +299,67 @@ const ChartPanel = ({ title, subtitle, type = 'area', data, dataKeys, colors, he
                 />
               ))}
             </ComposedChart>
+          </ResponsiveContainer>
+        );
+
+      case 'radar':
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+              <PolarGrid stroke="rgba(255,255,255,0.07)" strokeDasharray="3 3" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              {(dataKeys || ['value']).map((key, i) => (
+                <Radar
+                  key={key}
+                  name={key.charAt(0).toUpperCase() + key.slice(1)}
+                  dataKey={key}
+                  stroke={chartColors[i % chartColors.length]}
+                  strokeWidth={2}
+                  fill={chartColors[i % chartColors.length]}
+                  fillOpacity={0.3}
+                  activeDot={{ r: 6, fill: '#fff' }}
+                  animationDuration={1800}
+                />
+              ))}
+              <Tooltip content={<CustomTooltip />} />
+            </RadarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'radialBar':
+        return (
+          <ResponsiveContainer width="100%" height={height}>
+            <RadialBarChart 
+              cx="50%" cy="50%" innerRadius="20%" outerRadius="100%" 
+              barSize={10} data={data} startAngle={180} endAngle={-180}
+            >
+              <RadialBar
+                minAngle={15}
+                label={{ position: 'insideStart', fill: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 800 }}
+                background={{ fill: 'rgba(255,255,255,0.03)' }}
+                clockWise
+                dataKey="value"
+                cornerRadius={12}
+                animationDuration={1800}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                verticalAlign="middle" 
+                align="right" 
+                layout="vertical" 
+                content={({ payload }) => (
+                  <div className="flex flex-col gap-2 ml-4">
+                    {payload.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-[10px] text-silver-400 font-bold uppercase">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              />
+            </RadialBarChart>
           </ResponsiveContainer>
         );
 

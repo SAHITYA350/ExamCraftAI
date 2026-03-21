@@ -40,6 +40,8 @@ const Analytics = () => {
   const { searchQuery, setSearchQuery } = useSearch();
   const [timeRange, setTimeRange] = useState('week');
   const [analytics, setAnalytics] = useState(null);
+  const [practiceHistory, setPracticeHistory] = useState([]);
+  const [radialHistory, setRadialHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [userTopics, setUserTopics] = useState('');
@@ -64,6 +66,29 @@ const Analytics = () => {
       if (showLoading) setLoading(true);
       const res = await submissionService.getAnalytics();
       setAnalytics(res.data);
+
+      // Process practice history
+      const rawHistory = res.data?.practiceHistory || [];
+      const mappedHistory = (rawHistory.length === 1
+        ? [{ date: 'Initial', attempts: 0, correct: 0, incorrect: 0, accuracy: 0 }, ...rawHistory]
+        : rawHistory).map((d, i) => ({
+            ...d,
+            name: d.date === 'Initial' ? 'Begin' : `S${i}`,
+            _sin: Math.sin(i * 1.0) * 8 + 35,
+            _cos: Math.cos(i * 0.7) * 10 + 55,
+            _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
+          }));
+
+      // Transform practice history for radial visualization
+      const radialData = (mappedHistory || []).slice(-6).map((s, i) => ({
+        name: s.name || `Session ${i + 1}`,
+        value: s.accuracy || 0,
+        fill: s.accuracy >= 80 ? CHART_COLORS.success : s.accuracy >= 60 ? CHART_COLORS.warning : CHART_COLORS.danger
+      }));
+
+      setPracticeHistory(mappedHistory);
+      setRadialHistory(radialData);
+
     } catch (err) {
       console.error("Failed to fetch analytics", err);
     } finally {
@@ -92,16 +117,6 @@ const Analytics = () => {
 
   const studyPlan = analytics?.studyPlan || [];
   const weakTopics = analytics?.weakTopics || [];
-  const rawHistory = analytics?.practiceHistory || [];
-  const practiceHistory = (rawHistory.length === 1 
-    ? [{ date: 'Initial', attempts: 0, correct: 0, incorrect: 0, accuracy: 0 }, ...rawHistory]
-    : rawHistory).map((d, i) => ({ 
-        ...d, 
-        name: d.date === 'Initial' ? 'Begin' : `S${i}`,
-        _sin: Math.sin(i * 1.0) * 8 + 35,
-        _cos: Math.cos(i * 0.7) * 10 + 55,
-        _tan: Math.min(100, Math.max(0, Math.tan(i * 0.5) * 3 + 25))
-      }));
 
   const handleGenerateStudyPlan = async () => {
     try {
@@ -454,12 +469,11 @@ const Analytics = () => {
           <AccuracyChart data={practiceHistory} />
 
           <ChartPanel
-            title="Daily Practice"
-            subtitle="Neural Session Analysis"
-            type="track"
-            data={practiceHistory}
-            dataKeys={['incorrect', 'correct']}
-            colors={[CHART_COLORS.danger, CHART_COLORS.success]}
+            title="Session Performance Orbit"
+            subtitle="Individual session accuracy trajectory"
+            type="radialBar"
+            data={radialHistory}
+            dataKeys={['value']}
             height={280}
           />
         </div>
