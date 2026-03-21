@@ -20,22 +20,23 @@ export const AuthProvider = ({ children }) => {
       const savedUser = authService.getCurrentUser();
       
       if (savedUser) {
-        // Optimistically set from storage and stop loading immediately
-        // to prevent ProtectedRoute from redirecting on reload.
         setUser(savedUser);
-        setLoading(false);
         
         try {
-          // Verify with backend in the background
+          // Wait for backend to confirm session (handles Render spin-up)
           const responseBody = await authService.getMe();
           if (responseBody && responseBody.data) {
             setUser(responseBody.data);
           }
         } catch (error) {
           console.error("Session verification failed", error);
-          setUser(null);
-          // If we already set loading(false), we don't need to do it again,
-          // but if verification fails, the user will be redirected then.
+          // Only clear user on actual 401 from server
+          if (error.response?.status === 401) {
+            setUser(null);
+          }
+        } finally {
+          // Now safe to open routes
+          setLoading(false);
         }
       } else {
         setLoading(false);
