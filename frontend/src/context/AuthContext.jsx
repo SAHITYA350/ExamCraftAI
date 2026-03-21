@@ -23,19 +23,25 @@ export const AuthProvider = ({ children }) => {
         setUser(savedUser);
         
         try {
-          // Wait for backend to confirm session (handles Render spin-up)
+          // 1. Wake up the backend (Render free tier) if needed
+          try {
+            await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/health`, { timeout: 10000 });
+          } catch (pingError) {
+            console.warn("Backend wake-up ping failed/timed out, proceeding to verify session.");
+          }
+
+          // 2. Verify with backend
           const responseBody = await authService.getMe();
           if (responseBody && responseBody.data) {
             setUser(responseBody.data);
           }
         } catch (error) {
           console.error("Session verification failed", error);
-          // Only clear user on actual 401 from server
           if (error.response?.status === 401) {
             setUser(null);
+            authService.logout(); // Clear localStorage
           }
         } finally {
-          // Now safe to open routes
           setLoading(false);
         }
       } else {

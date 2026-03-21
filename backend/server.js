@@ -49,6 +49,10 @@ app.get('/', (req, res) => {
     res.send('ExamCraft AI API is running...');
 });
 
+app.get('/api/v1/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;

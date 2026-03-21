@@ -22,14 +22,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let isRedirecting = false;
+
 // Response interceptor — handle auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isRedirecting) {
+      isRedirecting = true;
       localStorage.removeItem('examcraft_token');
       localStorage.removeItem('examcraft_user');
-      window.location.href = '/login';
+      
+      // Only redirect if not already on the login/register/home pages
+      const publicPaths = ['/login', '/register', '/'];
+      if (!publicPaths.includes(window.location.pathname)) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
